@@ -61,6 +61,329 @@
         label { display: block; font-size: 0.65rem; color: var(--gold); margin: 15px 0 5px; text-transform: uppercase; letter-spacing: 1px; }
         input, select { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--glass-border); background: var(--glass); color: white; outline: none; }
 
+        /* --- CAMERA SCANNER ANIMATION --- */
+        .camera-box { 
+            width: 240px; height: 240px; border-radius: 50%; overflow: hidden; 
+            margin: 20px auto; background: #000; position: relative;
+            border: 2px solid transparent;
+        }
+
+        /* Gold Rotation Effect */
+        .camera-box::after {
+            content: ""; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+            background: conic-gradient(transparent, transparent, var(--gold), transparent);
+            animation: rotate 2s linear infinite; z-index: 1; pointer-events: none;
+        }
+        
+        @keyframes rotate { 100% { transform: rotate(360deg); } }
+
+        video, #photo-canvas { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); position: relative; z-index: 2; border-radius: 50%; }
+
+        .liveness-progress { position: absolute; bottom: 0; left: 0; height: 4px; background: var(--gold); width: 0%; transition: width 0.1s linear; z-index: 3; }
+
+        /* --- NAV BAR --- */
+        .nav-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: #0a0a0a; display: none; justify-content: space-around; padding: 15px 0; border-top: 1px solid var(--glass-border); z-index: 3000; }
+        .nav-item { text-align: center; font-size: 0.6rem; color: var(--text-dim); cursor: pointer; }
+        .nav-item.active { color: var(--gold); }
+
+        /* --- RECEIPT OVERLAY --- */
+        #receipt-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95); z-index: 8000; display: none;
+            justify-content: center; align-items: center; padding: 20px;
+        }
+        .receipt-card {
+            background: #fff; color: #000; width: 100%; max-width: 350px;
+            border-radius: 15px; padding: 25px; position: relative;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        .receipt-card::before, .receipt-card::after {
+            content: ""; position: absolute; left: 0; width: 100%; height: 10px;
+            background-size: 20px 10px;
+        }
+        .receipt-card::before {
+            top: -10px;
+            background-image: linear-gradient(135deg, #fff 25%, transparent 25%), linear-gradient(225deg, #fff 25%, transparent 25%);
+        }
+        .receipt-card::after {
+            bottom: -10px;
+            background-image: linear-gradient(135deg, transparent 75%, #fff 75%), linear-gradient(225deg, transparent 75%, #fff 75%);
+        }
+
+        .receipt-header { text-align: center; border-bottom: 2px dashed #ccc; padding-bottom: 15px; margin-bottom: 15px; }
+        .receipt-logo { font-weight: 900; font-size: 1.4rem; letter-spacing: 2px; }
+        .receipt-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.8rem; }
+        .receipt-total { border-top: 2px dashed #ccc; padding-top: 10px; margin-top: 10px; font-weight: bold; font-size: 1rem; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+    <header class="app-header" id="main-header"><div class="header-logo">CASHMONIE</div></header>
+
+    <div id="splash-view" class="view active"><h2 class="animated-brand">CASHMONIE LENDING</h2></div>
+
+    <div id="dash-view" class="view">
+        <h3 id="dash-welcome">Welcome back</h3>
+        <div class="loan-card">
+            <p style="font-size:0.6rem; color:var(--gold); letter-spacing:1px;">AVAILABLE LIMIT</p>
+            <h1 class="amount">₦500,000</h1>
+        </div>
+
+        <div id="loan-selection-ui">
+            <label>Select Loan Amount</label>
+            <input type="range" id="mainSlider" min="5000" max="500000" step="5000" value="50000" style="accent-color:var(--gold);">
+            <div style="display:flex; justify-content:space-between; margin:10px 0;">
+                <span>Principal: <b id="ui-val">₦50,000</b></span>
+                <span>Base Interest: <b>9%</b></span>
+            </div>
+            <button class="primary-btn" onclick="openKYC()">Apply Now</button>
+        </div>
+
+        <div id="active-loan-banner" style="display:none; text-align:center; padding: 20px; background:var(--glass); border-radius:15px; border:1px solid var(--red);">
+            <p style="color:var(--red); font-size:0.7rem;">OUTSTANDING DEBT</p>
+            <h2 id="dash-debt-val">₦0.00</h2>
+            <button class="secondary-btn" onclick="navTo('wallet-view', document.querySelectorAll('.nav-item')[1])">Make Payment</button>
+        </div>
+    </div>
+
+    <div id="wallet-view" class="view">
+        <div class="loan-card" style="border-left-color: var(--green);">
+            <p style="color:var(--green); font-size:0.6rem;">PAYABLE BALANCE</p>
+            <h1 id="wallet-debt-display">₦0.00</h1>
+        </div>
+        <label>Repayment Amount</label>
+        <input type="number" id="pay-input" placeholder="₦ 0.00">
+        <button class="primary-btn" style="background:var(--green); color:white" onclick="processRepayment()">Confirm Repayment</button>
+        <h4 style="margin:25px 0 10px;">Transactions</h4>
+        <div id="history-container"></div>
+    </div>
+
+    <div id="profile-view" class="view">
+        <center>
+            <div id="prof-pic-container" style="width:110px; height:110px; border-radius:50%; border:3px solid var(--gold); overflow:hidden; display:flex; align-items:center; justify-content:center; background:var(--gold); color:black; position: relative; margin-bottom: 15px;">
+                <span id="prof-initial" style="font-weight:800; font-size:3rem;">U</span>
+                <img id="prof-img" style="display:none; width:100%; height:100%; object-fit:cover; transform: scaleX(-1);">
+            </div>
+            <h2 id="prof-name">User</h2>
+            <p id="prof-email" style="color:var(--text-dim); font-size:0.8rem; margin-bottom: 20px;">---</p>
+        </center>
+        <label>Banking Details</label>
+        <div style="background:var(--glass); padding:15px; border-radius:12px;">
+            <p id="prof-bank">Not Linked</p>
+            <p id="prof-acc" style="font-size:0.8rem; color:var(--text-dim);">Account: ---</p>
+        </div>
+        <button class="secondary-btn" style="border-color:var(--red); color:var(--red); margin-top:30px;" onclick="resetApp()">Reset App Data</button>
+    </div>
+
+    <div id="kyc-overlay">
+        <div class="progress-container"><div id="progress-bar" class="progress-bar"></div></div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <h3 id="kyc-header" style="color:var(--gold)">1. Identification</h3>
+            <span id="step-count" style="font-size:0.7rem; color:var(--text-dim)">Step 1 of 8</span>
+        </div>
+
+        <div id="step-1" class="form-step active">
+            <label>Full Legal Name</label><input type="text" class="req" id="f-name">
+            <label>Date of Birth</label><input type="date" class="req">
+            <label>National ID Number (BVN/NIN)</label><input type="number" class="req">
+            <button class="primary-btn" onclick="nextStep(1, 2, '2. Contact Details')">Next Step</button>
+        </div>
+
+        <div id="step-2" class="form-step">
+            <label>Mobile Phone</label><input type="number" class="req">
+            <label>Email Address</label><input type="email" class="req" id="f-email">
+            <label>Residential Address</label><input type="text" class="req">
+            <button class="primary-btn" onclick="nextStep(2, 3, '3. Employment')">Next Step</button>
+        </div>
+        <div id="step-3" class="form-step">
+            <label>Employer Name</label><input type="text" class="req">
+            <label>Monthly Net Income</label><input type="number" class="req">
+            <button class="primary-btn" onclick="nextStep(3, 4, '4. Financial')">Next Step</button>
+        </div>
+        <div id="step-4" class="form-step">
+            <label>Bank Name</label><input type="text" class="req" id="f-bank">
+            <label>Account Number</label><input type="number" class="req" id="f-acc">
+            <button class="primary-btn" onclick="nextStep(4, 5, '5. Loan Request')">Next Step</button>
+        </div>
+        <div id="step-5" class="form-step">
+            <label>Loan Purpose</label><select class="req"><option value="">Select</option><option>Business</option><option>Education</option></select>
+            <label>Repayment Duration</label>
+            <select class="req" id="f-dur" onchange="calcInterest()">
+                <option value="">Select Duration</option>
+                <option value="0.09">3 Months (9% Interest)</option>
+                <option value="0.15">6 Months (15% Interest)</option>
+            </select>
+            <button class="primary-btn" onclick="nextStep(5, 6, '6. Emergency Contact')">Next Step</button>
+        </div>
+        <div id="step-6" class="form-step">
+            <label>Next of Kin Name</label><input type="text" class="req">
+            <label>Phone Number</label><input type="number" class="req">
+            <button class="primary-btn" onclick="nextStep(6, 7, '7. Face Verification')">Next Step</button>
+        </div>
+
+        <div id="step-7" class="form-step">
+            <div class="camera-box" id="cam-box">
+                <video id="webcam" autoplay playsinline muted></video>
+                <canvas id="photo-canvas" style="display:none;"></canvas>
+                <div id="liveness-bar" class="liveness-progress"></div>
+            </div>
+            <p id="cam-status" style="text-align:center; color:var(--gold); font-size:0.8rem; font-weight:bold; letter-spacing:1px; margin-top:10px;">CENTER YOUR FACE</p>
+            
+            <button id="cam-next" class="primary-btn" style="display:none;" onclick="nextStep(7, 8, '8. Legal Consent')">CONTINUE</button>
+        </div>
+
+        <div id="step-8" class="form-step">
+            <label><input type="checkbox" id="c1"> I authorize credit bureau checks.</label>
+            <label><input type="checkbox" id="c2"> I agree to Terms & Privacy Policy.</label>
+            <button class="primary-btn" style="background:var(--green); color:white;" onclick="finishApplication()">Disburse Funds</button>
+        </div>
+    </div>
+
+    <div id="receipt-overlay">
+        <div class="receipt-card">
+            <div class="receipt-header">
+                <div class="receipt-logo">CASHMONIE</div>
+                <div style="font-size:0.7rem; color:#666;">TRANSACTION RECEIPT</div>
+            </div>
+            <div class="receipt-row"><span>Status:</span><span style="color:var(--green); font-weight:bold;">SUCCESS</span></div>
+            <div class="receipt-row"><span>Type:</span><span>Loan Disbursement</span></div>
+            <div class="receipt-row"><span>Date:</span><span id="r-date"></span></div>
+            <div class="receipt-row"><span>Ref:</span><span id="r-ref"></span></div>
+            <div class="receipt-row"><span>Beneficiary:</span><span id="r-name"></span></div>
+            <div class="receipt-row"><span>Bank:</span><span id="r-bank"></span></div>
+            <div class="receipt-row"><span>Account:</span><span id="r-acc"></span></div>
+            <div class="receipt-row receipt-total"><span>Amount:</span><span id="r-amt"></span></div>
+            <button class="primary-btn" style="margin-top:25px;" onclick="closeReceipt()">Done</button>
+        </div>
+    </div>
+
+    <nav class="nav-bar" id="main-nav">
+        <div class="nav-item active" onclick="navTo('dash-view', this)">🏠<br>Home</div>
+        <div class="nav-item" onclick="navTo('wallet-view', this)">💳<br>Wallet</div>
+        <div class="nav-item" onclick="navTo('profile-view', this)">👤<br>Profile</div>
+    </nav>
+    <script>
+        let userData = { debt: 0, history: [], info: {}, userImg: null };
+        const savedData = localStorage.getItem('cashmonie_data');
+        if (savedData) userData = JSON.parse(savedData);
+
+        let livenessIndex = 0;
+        const prompts = ["BLINK YOUR EYES", "NOD YOUR HEAD", "SMILE"];
+
+        function navTo(id, el) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            if(el) el.classList.add('active');
+        }
+
+        setTimeout(() => {
+            document.getElementById('splash-view').style.display = 'none';
+            document.getElementById('main-header').style.display = 'flex';
+            document.getElementById('main-nav').style.display = 'flex';
+            navTo('dash-view');
+            updateAppUI();
+        }, 2000);
+
+        function openKYC() { document.getElementById('kyc-overlay').style.display = 'flex'; }
+
+        function nextStep(curr, next, title) {
+            if(next === 7) startLiveness();
+            if(curr === 7) stopCamera();
+
+            document.getElementById('step-' + curr).classList.remove('active');
+            document.getElementById('step-' + next).classList.add('active');
+            document.getElementById('kyc-header').innerText = title;
+            document.getElementById('progress-bar').style.width = (next / 8 * 100) + "%";
+        }
+
+        async function startLiveness() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+                document.getElementById('webcam').srcObject = stream;
+                window.camStream = stream;
+                
+                livenessIndex = 0;
+                runNextPrompt();
+            } catch (e) { alert("Camera access required."); }
+        }
+
+        function runNextPrompt() {
+            if (livenessIndex < prompts.length) {
+                document.getElementById('cam-status').innerText = prompts[livenessIndex];
+                let p = 0;
+                let intv = setInterval(() => {
+                    p += 10;
+                    document.getElementById('liveness-bar').style.width = p + "%";
+                    if(p >= 100) {
+                        clearInterval(intv);
+                        livenessIndex++;
+                        runNextPrompt();
+                    }
+                }, 150); // Timing for gestures
+            } else {
+                autoSnap();
+            }
+        }
+
+        function autoSnap() {
+            const video = document.getElementById('webcam');
+            const canvas = document.getElementById('photo-canvas');
+            canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            
+            userData.userImg = canvas.toDataURL('image/webp');
+            
+            video.style.display = 'none';
+            canvas.style.display = 'block';
+            document.getElementById('liveness-bar').style.display = 'none';
+            document.getElementById('cam-status').innerText = "SNAP & VERIFIED ✅";
+            document.getElementById('cam-next').style.display = 'block';
+        }
+
+        function stopCamera() { if(window.camStream) window.camStream.getTracks().forEach(t => t.stop()); }
+
+        function finishApplication() {
+            userData.info.name = document.getElementById('f-name').value;
+            userData.info.email = document.getElementById('f-email').value;
+            userData.info.bank = document.getElementById('f-bank').value;
+            userData.info.acc = document.getElementById('f-acc').value;
+            
+            const principal = parseInt(document.getElementById('mainSlider').value);
+            
+            // Populate Receipt
+            document.getElementById('r-date').innerText = new Date().toLocaleString();
+            document.getElementById('r-ref').innerText = 'CM-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+            document.getElementById('r-name').innerText = userData.info.name;
+            document.getElementById('r-bank').innerTe            background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('cmloan-onboard.png'); 
+            background-size: cover; background-position: center; justify-content: center; align-items: center; 
+        }
+        .animated-brand { 
+            font-size: 2.2rem; font-weight: 900; letter-spacing: 5px; text-align: center;
+            background: linear-gradient(to right, #D4AF37 20%, #FFF 50%, #D4AF37 80%);
+            background-size: 200% auto; background-clip: text; -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent; animation: shine 3s linear infinite;
+        }
+        @keyframes shine { to { background-position: 200% center; } }
+
+        /* --- UI COMPONENTS --- */
+        .loan-card { background: linear-gradient(135deg, #111, #000); border: 1px solid var(--glass-border); border-radius: 25px; padding: 25px; text-align: center; margin-bottom: 20px; border-left: 4px solid var(--gold); }
+        .amount { font-size: 2.2rem; font-weight: 800; margin: 5px 0; }
+        .primary-btn { width: 100%; padding: 16px; border-radius: 12px; border: none; background: var(--gold); font-weight: 800; cursor: pointer; text-transform: uppercase; color: #000; font-size: 0.85rem; margin-top: 10px; }
+        .secondary-btn { width: 100%; padding: 14px; border-radius: 12px; border: 1px solid var(--gold); background: transparent; color: var(--gold); font-weight: 600; margin-top: 10px; }
+
+        /* --- FORM & KYC OVERLAY --- */
+        #kyc-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 6000; display: none; flex-direction: column; padding: 30px 20px; overflow-y: auto; }
+        .progress-container { width: 100%; height: 6px; background: var(--glass); border-radius: 10px; margin-bottom: 15px; overflow: hidden; }
+        .progress-bar { width: 12.5%; height: 100%; background: var(--gold); transition: 0.4s ease; }
+        
+        .form-step { display: none; animation: fadeIn 0.3s ease; }
+        .form-step.active { display: block; }
+        label { display: block; font-size: 0.65rem; color: var(--gold); margin: 15px 0 5px; text-transform: uppercase; letter-spacing: 1px; }
+        input, select { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--glass-border); background: var(--glass); color: white; outline: none; }
+
         /* --- CAMERA LIVENESS --- */
         .camera-box { width: 240px; height: 240px; border-radius: 50%; overflow: hidden; border: 4px solid var(--glass-border); margin: 20px auto; background: #000; position: relative; transition: border-color 0.5s; }
         .camera-box.active-border { border-color: var(--gold); }
