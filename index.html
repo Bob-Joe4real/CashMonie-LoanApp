@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CASHMONIE | Premium Lending</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#050505">
+    
+    <style>
+        :root {
+            --bg-black: #050505;
+            --gold: #D4AF37;
+            --glass: rgba(255, 255, 255, 0.08);
+            --glass-border: rgba(255, 255, 255, 0.15);
+            --text-dim: #888;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: var(--bg-black); color: white; height: 100vh; overflow: hidden;}
+
+        /* --- DYNAMIC OTP NOTIFICATION --- */
+        #otp-toast {
+            position: fixed;
+            top: -120px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 340px;
+            background: rgba(15, 15, 15, 0.98);
+            border-left: 4px solid var(--gold);
+            padding: 18px;
+            border-radius: 12px;
+            z-index: 2500;
+            display: flex;
+            align-items: center; gap: 15px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.9);
+            transition: top 0.7s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+            backdrop-filter: blur(15px);
+        }
+        #otp-toast.show { top: 20px; }
+
+        .view { display: none; height: 100vh; width: 100%; flex-direction: column; align-items: center; justify-content: center; position: absolute; top: 0; left: 0; padding: 20px; }
+        .view.active { display: flex; }
+
+        /* --- HERO SPLASH --- */
+        #splash-view { 
+            background: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.8)), url('cmloan-onphone.png'); 
+            background-size: cover;
+            background-position: center;
+        }
+
+        /* FIX 3: Added Premium Animation */
+        .brand-name { 
+            font-size: 2.2rem; 
+            font-weight: 900; 
+            color: var(--gold); 
+            letter-spacing: 4px; 
+            text-align: center;
+            opacity: 0;
+            transform: translateY(30px);
+            animation: premiumReveal 1.5s ease-out forwards;
+            text-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
+        }
+        .brand-name span { 
+            font-size: 0.9rem; 
+            letter-spacing: 6px; 
+            color: white; 
+            display: block; 
+            margin-top: 10px;
+            animation: fadeIn 2s ease-in forwards 0.8s;
+            opacity: 0;
+        }
+
+        @keyframes premiumReveal {
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeIn { to { opacity: 1; } }
+
+        /* --- BILLBOARD VIEW --- */
+        #billboard-view { background: #000; padding: 0; }
+        .billboard-img { width: 100%; height: 100%; object-fit: contain; }
+
+        /* --- FORMS --- */
+        .form-card { background: var(--glass); border: 1px solid var(--glass-border); padding: 30px; border-radius: 25px; width: 100%; max-width: 350px; backdrop-filter: blur(20px); }
+        h2 { margin-bottom: 20px; text-align: center; color: var(--gold); font-size: 1.1rem; text-transform: uppercase; }
+        input { width: 100%; padding: 15px; margin-bottom: 15px; border-radius: 12px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.6); color: white; outline: none; }
+        input:focus { border-color: var(--gold); }
+        button { width: 100%; padding: 16px; border-radius: 12px; border: none; background: var(--gold); font-weight: 900; cursor: pointer; text-transform: uppercase; color: #000; }
+        .link-btn { background: none; color: var(--gold); font-size: 0.8rem; margin-top: 15px; text-decoration: none; display: block; text-align: center; width: 100%; }
+    </style>
+</head>
+<body>
+
+    <div id="otp-toast">
+        <div style="font-size: 1.5rem;">🏦</div>
+        <div class="toast-content">
+            <p style="font-size: 0.75rem; color: #888;">CashMonie: Verification Code</p>
+            <p>Your code is: <b id="generated-otp-text">000000</b></p>
+        </div>
+    </div>
+
+    <div id="splash-view" class="view active">
+        <div class="brand-name">CASHMONIE<span>PREMIUM LENDING</span></div>
+    </div>
+
+    <div id="login-view" class="view">
+        <div class="form-card">
+            <h2 id="login-greet">Secure Access</h2>
+            <input type="password" id="login-pin" maxlength="4" placeholder="Enter PIN" style="text-align: center;">
+            <button onclick="handleLogin()">Login</button>
+            <button class="link-btn" style="color: #888;" onclick="navigate('register-view')">New User? Register</button>
+        </div>
+    </div>
+
+    <div id="register-view" class="view">
+        <div class="form-card">
+            <h2>Registration</h2>
+            <input type="text" id="reg-user" placeholder="Full Name">
+            <input type="tel" id="reg-phone" placeholder="Phone Number">
+            <input type="password" id="reg-pass" placeholder="Password (Ex: Cash@1)">
+            <button onclick="handleRegister()">Register</button>
+            <button class="link-btn" onclick="navigate('login-view')">Back to Login</button>
+        </div>
+    </div>
+
+    <div id="pin-view" class="view">
+        <div class="form-card">
+            <h2>Set Access PIN</h2>
+            <input type="password" id="reg-pin" maxlength="4" placeholder="••••" style="text-align: center; font-size: 2rem; letter-spacing: 10px;">
+            <button onclick="handlePin()">Save PIN</button>
+        </div>
+    </div>
+
+    <div id="otp-view" class="view">
+        <div class="form-card">
+            <h2>Verify Account</h2>
+            <input type="text" id="otp-input" maxlength="6" placeholder="Enter OTP" style="text-align: center; letter-spacing: 5px; font-size: 1.2rem;">
+            <button onclick="handleOtp()">Verify & Continue</button>
+        </div>
+    </div>
+
+    <div id="billboard-view" class="view">
+        <img src="cmloan-onboard.png" class="billboard-img" alt="Billboard">
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        let currentGeneratedOTP = "";
+
+        const navigate = (id) => {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+        };
+
+        // Splash screen delay
+        setTimeout(() => {
+            const userData = JSON.parse(localStorage.getItem('cashmonie_user'));
+            if(userData) {
+                document.getElementById('login-greet').innerText = `Welcome back, ${userData.username.split(' ')[0]}`;
+                navigate('login-view');
+            } else {
+                navigate('register-view');
+            }
+        }, 4000);
+
+        function handleRegister() {
+            const user = document.getElementById('reg-user').value;
+            const pass = document.getElementById('reg-pass').value;
+            if(!user || !pass) return alert("Please fill fields");
+            localStorage.setItem('temp_user', JSON.stringify({username: user, password: pass}));
+            navigate('pin-view');
+        }
+
+        // FIX 2 logic: This now properly saves to temp storage
+        function handlePin() {
+            const pin = document.getElementById('reg-pin').value;
+            if(pin.length < 4) return alert("4-Digit PIN required");
+            let temp = JSON.parse(localStorage.getItem('temp_user'));
+            temp.pin = pin;
+            localStorage.setItem('temp_user', JSON.stringify(temp));
+            
+            currentGeneratedOTP = Math.floor(100000 + Math.random() * 899999).toString();
+            document.getElementById('generated-otp-text').innerText = currentGeneratedOTP;
+
+            navigate('otp-view');
+            setTimeout(() => {
+                document.getElementById('otp-toast').classList.add('show');
+                setTimeout(() => document.getElementById('otp-toast').classList.remove('show'), 8000);
+            }, 500);
+        }
+
+        function handleOtp() {
+            if(document.getElementById('otp-input').value === currentGeneratedOTP) {
+                const finalUser = JSON.parse(localStorage.getItem('temp_user'));
+                localStorage.setItem('cashmonie_user', JSON.stringify(finalUser));
+                document.getElementById('otp-toast').classList.remove('show');
+                
+                navigate('billboard-view');
+                setTimeout(() => {
+                    window.location.href = 'home.html';
+                }, 3500);
+            } else {
+                alert("Incorrect OTP");
+            }
+        }
+
+        // FIX 1: Direct navigation to home.html on correct PIN
+        function handleLogin() {
+            const pin = document.getElementById('login-pin').value;
+            const savedData = JSON.parse(localStorage.getItem('cashmonie_user'));
+            
+            if (savedData && pin === savedData.pin) {
+                window.location.href = 'home.html';
+            } else {
+                alert("Invalid Security PIN");
+            }
+        }
+    </script>
+</body>
+</html>

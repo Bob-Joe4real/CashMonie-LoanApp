@@ -1,0 +1,21 @@
+{
+  "short_name": "CASHMONIE",
+  "name": "CASHMONIE Premium Finance",
+  "icons": [
+    {
+      "src": "logo192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "logo512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "index.html",
+  "background_color": "#050505",
+  "display": "standalone",
+  "theme_color": "#D4AF37",
+  "description": "Premium micro-lending and finance platform."
+}
